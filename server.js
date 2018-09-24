@@ -82,7 +82,10 @@ if(path == '/style.css'){
         //将users变量的值替换为一个空的数组
         users = []
       }
-      users.push({email:email,password:password})
+      console.log(1)
+      console.log(users)
+      users.push({email: email, password: password})
+      console.log(2)
       var usersString = JSON.stringify(users)
       //将userString变量里的内容写入文件users里(会将原来users里面的内容替换掉)
       //文件里只能写入字符串所以要将对象转为字符串存入文件
