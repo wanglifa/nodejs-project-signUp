@@ -38,8 +38,27 @@ if(path == '/style.css'){
   response.end()
 }else if(path === '/'){
   var string = fs.readFileSync('./index.html','utf8');
-  var bd = fs.readFileSync('./bd','utf8');
-  string = string.replace('&&&amount&&&',bd);
+  //let cookies = request.headers.cookie.split(';')
+  response.setHeader('Content-Type','text/html; charset=utf-8');
+  let cookies = request.headers.cookie.split('; ')
+  let hash = {}
+  for(let i =0;i<cookies.length;i++){
+    let parts = cookies[i].split('=')
+    let key = parts[0]
+    let value = parts[1]
+    hash[key]=value
+  }
+  let email = hash.sign_in_email
+  let users = fs.readFileSync('./db/users','utf8')
+  users = JSON.parse(users)
+  for(let i =0;i<users.length;i++){
+    if(users[i].email === email){
+      string = string.replace('__password__',users[i].password)
+    }else{
+      string = string.replace('__password__','不知道')
+    }
+  }
+  console.log(string)
   response.write(string)
   response.end()
 }else if(path === '/sign_up' && method ==='GET'){
@@ -82,15 +101,63 @@ if(path == '/style.css'){
         //将users变量的值替换为一个空的数组
         users = []
       }
-      console.log(1)
-      console.log(users)
-      users.push({email: email, password: password})
-      console.log(2)
-      var usersString = JSON.stringify(users)
-      //将userString变量里的内容写入文件users里(会将原来users里面的内容替换掉)
-      //文件里只能写入字符串所以要将对象转为字符串存入文件
-      fs.writeFileSync('./db/users', usersString)
-      response.statusCode = 200
+      //设置一个中间变量inUse
+      let inUse = false;
+      //遍历你users这个数组，
+      for(let i = 0; i<users.length; i++){
+        //如果users里面其中有一项的email等于你传入的email
+        if(users[i].email === email){
+          //就让inUse=true
+          inUse = true;
+          //然后退出循环
+          break;
+        }
+      }
+      //如果inUse是true响应一个400请求
+      if(inUse){
+        response.statusCode = 400
+        response.write('email is exist')
+      }else{
+        users.push({email: email, password: password})
+        var usersString = JSON.stringify(users)
+        //将userString变量里的内容写入文件users里(会将原来users里面的内容替换掉)
+        //文件里只能写入字符串所以要将对象转为字符串存入文件
+        fs.writeFileSync('./db/users', usersString)
+        response.statusCode = 200
+      }
+    }
+    response.end()
+  })
+}else if(path === '/sign_in' && method === 'GET'){
+  var string = fs.readFileSync('./sign_in.html','utf8');
+  response.setHeader('Content-Type','text/html; charset=utf-8');
+  response.write(string);
+  response.end()
+}else if(path === '/sign_in' && method === 'POST'){
+  readBody(request).then((body)=>{
+    let strings = body.split('&') //['email=1002325418@qq.com', 'password=aaa', 'password_confirmation=aaa']
+    let hash = {}
+    strings.forEach((string)=>{
+      let parts = string.split('=') //['email', '1002325418@qq.com']
+      let key = parts[0]
+      let value = parts[1]
+      hash[key] = decodeURIComponent(value)
+    })
+    let {email, password} = hash
+    var users = fs.readFileSync('./db/users','utf8');
+    users = JSON.parse(users)
+    let found
+    for(let i = 0;i<users.length;i++){
+      if(users[i].email === email && users[i].password === password){
+        found = true
+        break
+      }
+    }
+    if(found){
+      response.setHeader('Set-Cookie',`sign_in_email=${email}`)
+      response.statusCode = 200;
+    }else{
+      response.statusCode = 401
     }
     response.end()
   })
@@ -117,4 +184,4 @@ function readBody(request){
 server.listen(port)
 console.log('监听 ' + port + ' 成功\n请用在空中转体720度然后用电饭煲打开 http://localhost:' + port)
 
-
+ 
