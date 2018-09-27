@@ -51,14 +51,17 @@ if(path == '/style.css'){
   let email = hash.sign_in_email
   let users = fs.readFileSync('./db/users','utf8')
   users = JSON.parse(users)
+  let founduser = false
   for(let i =0;i<users.length;i++){
     if(users[i].email === email){
-      string = string.replace('__password__',users[i].password)
-    }else{
-      string = string.replace('__password__','不知道')
+      founduser = users[i]
     }
   }
-  console.log(string)
+  if(founduser){
+    string = string.replace('__password__',founduser.password)
+  }else{
+    string = string.replace('__password__','不知道')
+  }
   response.write(string)
   response.end()
 }else if(path === '/sign_up' && method ==='GET'){
