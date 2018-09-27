@@ -30,7 +30,7 @@ var method = request.method
 
 
 
-
+let sessions = {}
 console.log('HTTP 路径为\n' + path)
 if(path == '/style.css'){
   response.setHeader('Content-Type','text/css; charset=utf-8')
@@ -40,7 +40,10 @@ if(path == '/style.css'){
   var string = fs.readFileSync('./index.html','utf8');
   //let cookies = request.headers.cookie.split(';')
   response.setHeader('Content-Type','text/html; charset=utf-8');
-  let cookies = request.headers.cookie.split('; ')
+  let cookies = ''
+  if(request.headers.cookie){
+    cookies = request.headers.cookie.split('; ')
+  }
   let hash = {}
   for(let i =0;i<cookies.length;i++){
     let parts = cookies[i].split('=')
@@ -48,17 +51,26 @@ if(path == '/style.css'){
     let value = parts[1]
     hash[key]=value
   }
-  let email = hash.sign_in_email
+  console.log(sessions)
+  let mySession = sessions[hash.sessionId]
+  let email
+  if(mySession){
+    email = mySession.sign_in_email
+  }
+  console.log(email)
   let users = fs.readFileSync('./db/users','utf8')
   users = JSON.parse(users)
+  let foundUser = false
   for(let i =0;i<users.length;i++){
     if(users[i].email === email){
-      string = string.replace('__password__',users[i].password)
-    }else{
-      string = string.replace('__password__','不知道')
+      foundUser = users[i]
     }
   }
-  console.log(string)
+  if(foundUser){
+    string = string.replace('__password__',foundUser.password)
+  }else{
+    string = string.replace('__password__','不知道')
+  }
   response.write(string)
   response.end()
 }else if(path === '/sign_up' && method ==='GET'){
@@ -133,7 +145,7 @@ if(path == '/style.css'){
   response.setHeader('Content-Type','text/html; charset=utf-8');
   response.write(string);
   response.end()
-}else if(path === '/sign_in' && method === 'POST'){
+}else if(path === '/sign_in' && method === 'POST'){  //登录
   readBody(request).then((body)=>{
     let strings = body.split('&') //['email=1002325418@qq.com', 'password=aaa', 'password_confirmation=aaa']
     let hash = {}
@@ -154,7 +166,9 @@ if(path == '/style.css'){
       }
     }
     if(found){
-      response.setHeader('Set-Cookie',`sign_in_email=${email}`)
+      let sessionId = Math.random()*10000000
+      sessions[sessionId] = {sign_in_email:email}
+      response.setHeader('Set-Cookie',`sessionId=${sessionId}`)
       response.statusCode = 200;
     }else{
       response.statusCode = 401
@@ -184,4 +198,3 @@ function readBody(request){
 server.listen(port)
 console.log('监听 ' + port + ' 成功\n请用在空中转体720度然后用电饭煲打开 http://localhost:' + port)
 
- 
