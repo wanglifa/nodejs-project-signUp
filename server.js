@@ -7,7 +7,9 @@ if(!port){
   console.log('请指定端口号好不啦？\nnode server.js 8888 这样不会吗？')
   process.exit(1)
 }
+let sessions = {}
 
+//下面server里面的内容是每次到新的页面下都要执行的
 var server = http.createServer(function(request, response){
 var parsedUrl = url.parse(request.url, true)
 var pathWithQuery = request.url 
@@ -30,7 +32,6 @@ var method = request.method
 
 
 
-let sessions = {}
 console.log('HTTP 路径为\n' + path)
 if(path == '/style.css'){
   response.setHeader('Content-Type','text/css; charset=utf-8')
@@ -163,11 +164,12 @@ if(path == '/style.css'){
       if(users[i].email === email && users[i].password === password){
         found = true
         break
-      }
+      }sd
     }
     if(found){
       let sessionId = Math.random()*10000000
       sessions[sessionId] = {sign_in_email:email}
+      console.log(sessions)
       response.setHeader('Set-Cookie',`sessionId=${sessionId}`)
       response.statusCode = 200;
     }else{
