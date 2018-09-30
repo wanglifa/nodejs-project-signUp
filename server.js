@@ -2,6 +2,7 @@ var http = require('http')
 var fs = require('fs')
 var url = require('url')
 var port = process.argv[2]
+var md5 = require('md5')
 
 if(!port){
   console.log('请指定端口号好不啦？\nnode server.js 8888 这样不会吗？')
@@ -9,7 +10,6 @@ if(!port){
 }
 let sessions = {}
 
-//下面server里面的内容是每次到新的页面下都要执行的
 var server = http.createServer(function(request, response){
 var parsedUrl = url.parse(request.url, true)
 var pathWithQuery = request.url 
@@ -32,11 +32,31 @@ var method = request.method
 
 
 
+
 console.log('HTTP 路径为\n' + path)
-if(path == '/style.css'){
+if(path === '/css/default.css'){
+  var string = fs.readFileSync('./css/default.css')
   response.setHeader('Content-Type','text/css; charset=utf-8')
-  response.write('body{background-color:gray;}h1{color:red;}')
+  //200000秒后缓存失效
+  response.setHeader('Cache-Control','max-age=200000')
+  //在2018九月29号 15:47:37缓存失效
+  //response.setHeader('Expires', 'Sat, 29 Sep 2018 15:47:37 GMT')
+  response.write(string)
   response.end()
+}else if(path === '/js/main.js'){
+  var string = fs.readFileSync('./js/main.js')
+  response.setHeader('Content-Type','text/javascript; charset=utf-8')
+  let fileMd5 = md5(string)
+  response.setHeader('ETag', fileMd5)
+  //如果上一次的md5和文件当前的md5不一致
+  if(request.headers['if-none-match'] === fileMd5){
+    //没有响应体
+    response.statusCode = 304
+  }else{
+    //有响应体
+    response.write(string)
+  }
+  response.end() 
 }else if(path === '/'){
   var string = fs.readFileSync('./index.html','utf8');
   //let cookies = request.headers.cookie.split(';')
@@ -52,13 +72,11 @@ if(path == '/style.css'){
     let value = parts[1]
     hash[key]=value
   }
-  console.log(sessions)
   let mySession = sessions[hash.sessionId]
   let email
   if(mySession){
     email = mySession.sign_in_email
   }
-  console.log(email)
   let users = fs.readFileSync('./db/users','utf8')
   users = JSON.parse(users)
   let foundUser = false
@@ -164,12 +182,11 @@ if(path == '/style.css'){
       if(users[i].email === email && users[i].password === password){
         found = true
         break
-      }sd
+      }
     }
     if(found){
       let sessionId = Math.random()*10000000
       sessions[sessionId] = {sign_in_email:email}
-      console.log(sessions)
       response.setHeader('Set-Cookie',`sessionId=${sessionId}`)
       response.statusCode = 200;
     }else{
